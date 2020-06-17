@@ -18,6 +18,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/spf13/cobra"
 )
@@ -62,15 +63,25 @@ func stats(recipes []Recipe) Stat {
 }
 
 func uniqueRecipeCount(recipes []Recipe) int {
-	return 15
+	return len(countPerRecipe(recipes))
 }
 
 func countPerRecipe(recipes []Recipe) []RecipeCount {
-	return []RecipeCount{
-		{Recipe: "Speedy Steak Fajitas", Count: 1},
-		{Recipe: "Tex-Mex Tilapia", Count: 3},
-		{Recipe: "Mediterranean Baked Veggies", Count: 1},
+	groupedByName := map[string]int{}
+	for _, recipe := range recipes {
+		groupedByName[recipe.Recipe]++
 	}
+	names := make([]string, 0, len(groupedByName))
+	for k := range groupedByName {
+		names = append(names, k)
+	}
+
+	sort.Strings(names)
+	res := []RecipeCount{}
+	for _, k := range names {
+		res = append(res, RecipeCount{Recipe: k, Count: groupedByName[k]})
+	}
+	return res
 }
 
 func busiestPostcode(recipes []Recipe) DeliveryCount {
