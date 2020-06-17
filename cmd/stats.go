@@ -53,12 +53,12 @@ type Stat struct {
 	CountPerPostcodeAndTime PostcodePerTime `json:"count_per_postcode_and_time"`
 }
 
-func stats(recipes []Recipe) Stat {
+func stats(recipes []Recipe, postcodePerTime PostcodePerTime) Stat {
 	return Stat{
 		UniqueRecipeCount:       uniqueRecipeCount(recipes),
 		CountPerRecipe:          countPerRecipe(recipes),
 		BusiestPostcode:         busiestPostcode(recipes),
-		CountPerPostcodeAndTime: countPerPostcodeAndTime(recipes),
+		CountPerPostcodeAndTime: countPerPostcodeAndTime(recipes, postcodePerTime),
 	}
 }
 
@@ -85,19 +85,21 @@ func countPerRecipe(recipes []Recipe) []RecipeCount {
 }
 
 func busiestPostcode(recipes []Recipe) DeliveryCount {
-	return DeliveryCount{
-		Postcode:      "10120",
-		DeliveryCount: 1000,
+	res := DeliveryCount{}
+	groupedByPostcode := map[string]int{}
+	for _, recipe := range recipes {
+		groupedByPostcode[recipe.Postcode]++
+		if groupedByPostcode[recipe.Postcode] > res.DeliveryCount {
+			res.DeliveryCount = groupedByPostcode[recipe.Postcode]
+			res.Postcode = recipe.Postcode
+		}
 	}
+	return res
 }
 
-func countPerPostcodeAndTime(recipes []Recipe) PostcodePerTime {
-	return PostcodePerTime{
-		Postcode:      "10120",
-		From:          "11AM",
-		To:            "3PM",
-		DeliveryCount: 500,
-	}
+func countPerPostcodeAndTime(recipes []Recipe, postcodePerTime PostcodePerTime) PostcodePerTime {
+	postcodePerTime.DeliveryCount = 500
+	return postcodePerTime
 }
 
 // statsCmd represents the stats command
@@ -115,7 +117,11 @@ to quickly create a Cobra application.`,
 			{"10224", "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
 			{"10208", "Speedy Steak Fajitas", "Thursday 7AM - 5PM"},
 		}
-		stat := stats(recipes)
+		postcode := cmd.Flag("postcode").Value.String()
+		from := cmd.Flag("from").Value.String()
+		to := cmd.Flag("to").Value.String()
+		postcodePerTime := PostcodePerTime{Postcode: postcode, From: from, To: to}
+		stat := stats(recipes, postcodePerTime)
 		b, err := json.Marshal(&stat)
 		if err != nil {
 			fmt.Printf("Error: %s", err)
@@ -132,7 +138,9 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// statsCmd.PersistentFlags().String("foo", "", "A help for foo")
+	statsCmd.PersistentFlags().String("postcode", "10120", "A help for postcode")
+	statsCmd.PersistentFlags().String("from", "10AM", "A help for from")
+	statsCmd.PersistentFlags().String("to", "3PM", "A help for to")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
