@@ -18,6 +18,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 
 	stat "github.com/ricardoalmeida/golang-cli/cmd/statistics"
 	"github.com/spf13/cobra"
@@ -34,13 +35,21 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		recipes := []stat.Recipe{
-			{"10224", "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-			{"10208", "Speedy Steak Fajitas", "Thursday 7AM - 5PM"},
-		}
 		postcode := cmd.Flag("postcode").Value.String()
 		from := cmd.Flag("from").Value.String()
 		to := cmd.Flag("to").Value.String()
+		filePath := cmd.Flag("file").Value.String()
+
+		data, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			panic(err)
+		}
+
+		recipes := []stat.Recipe{}
+		err = json.Unmarshal(data, &recipes)
+		if err != nil {
+			panic(err)
+		}
 
 		stat := stat.Stats(recipes, postcode, from, to)
 		b, err := json.Marshal(&stat)
@@ -62,6 +71,7 @@ func init() {
 	statsCmd.PersistentFlags().String("postcode", "10120", "A help for postcode")
 	statsCmd.PersistentFlags().String("from", "10AM", "A help for from")
 	statsCmd.PersistentFlags().String("to", "3PM", "A help for to")
+	statsCmd.PersistentFlags().String("file", "./test_calculation_small.json", "A help for to")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
