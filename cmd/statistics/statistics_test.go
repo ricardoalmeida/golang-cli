@@ -1,4 +1,4 @@
-package cmd
+package statistics
 
 import (
 	"reflect"
@@ -34,8 +34,7 @@ func TestStats(t *testing.T) {
 		},
 	}
 
-	postcodePerTime := PostcodePerTime{Postcode: "10120", From: "11AM", To: "3PM"}
-	got := stats(recipes, postcodePerTime)
+	got := Stats(recipes, "10120", "11AM", "3PM")
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("stats() = %v; want %v", got, want)
 	}
