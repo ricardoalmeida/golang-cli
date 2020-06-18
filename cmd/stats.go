@@ -18,7 +18,9 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -34,7 +36,7 @@ type RecipeCount struct {
 	Count  int    `json:"count"`
 }
 
-type DeliveryCount struct {
+type PostcodeDeliveryCount struct {
 	Postcode      string `json:"postcode"`
 	DeliveryCount int    `json:"delivery_count"`
 }
@@ -47,18 +49,21 @@ type PostcodePerTime struct {
 }
 
 type Stat struct {
-	UniqueRecipeCount       int             `json:"unique_recipe_count"`
-	CountPerRecipe          []RecipeCount   `json:"count_per_recipe"`
-	BusiestPostcode         DeliveryCount   `json:"busiest_postcode"`
-	CountPerPostcodeAndTime PostcodePerTime `json:"count_per_postcode_and_time"`
+	UniqueRecipeCount       int                   `json:"unique_recipe_count"`
+	CountPerRecipe          []RecipeCount         `json:"count_per_recipe"`
+	BusiestPostcode         PostcodeDeliveryCount `json:"busiest_postcode"`
+	CountPerPostcodeAndTime PostcodePerTime       `json:"count_per_postcode_and_time"`
 }
 
 func stats(recipes []Recipe, postcodePerTime PostcodePerTime) Stat {
+	count, _ := countPerPostcodeAndTime(recipes, postcodePerTime) // TODO error
+	postcodePerTime.DeliveryCount = count
+
 	return Stat{
 		UniqueRecipeCount:       uniqueRecipeCount(recipes),
 		CountPerRecipe:          countPerRecipe(recipes),
 		BusiestPostcode:         busiestPostcode(recipes),
-		CountPerPostcodeAndTime: countPerPostcodeAndTime(recipes, postcodePerTime),
+		CountPerPostcodeAndTime: postcodePerTime,
 	}
 }
 
@@ -84,8 +89,8 @@ func countPerRecipe(recipes []Recipe) []RecipeCount {
 	return res
 }
 
-func busiestPostcode(recipes []Recipe) DeliveryCount {
-	res := DeliveryCount{}
+func busiestPostcode(recipes []Recipe) PostcodeDeliveryCount {
+	res := PostcodeDeliveryCount{}
 	groupedByPostcode := map[string]int{}
 	for _, recipe := range recipes {
 		groupedByPostcode[recipe.Postcode]++
@@ -97,9 +102,60 @@ func busiestPostcode(recipes []Recipe) DeliveryCount {
 	return res
 }
 
-func countPerPostcodeAndTime(recipes []Recipe, postcodePerTime PostcodePerTime) PostcodePerTime {
-	postcodePerTime.DeliveryCount = 500
-	return postcodePerTime
+func countPerPostcodeAndTime(recipes []Recipe, postcodePerTime PostcodePerTime) (count int, err error) {
+	limitFrom, err := parseTime(postcodePerTime.From)
+	if err != nil {
+		return
+	}
+	limitTo, err := parseTime(postcodePerTime.To)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	recipes = filter(recipes, func(recipe Recipe) bool {
+		timeFrom, timeTo, err := parseDelivery(recipe.Delivery)
+		if err != nil {
+			fmt.Println(err)
+			return false
+		}
+
+		return recipe.Postcode == postcodePerTime.Postcode &&
+			(timeFrom.After(limitFrom) || timeFrom.Equal(limitFrom)) &&
+			(timeTo.Before(limitTo) || timeTo.Equal(limitTo))
+	})
+
+	return len(recipes), nil
+}
+
+func parseDelivery(str string) (from time.Time, to time.Time, err error) {
+	re := regexp.MustCompile(`\d+(AM|PM)`)
+	result := re.FindAll([]byte(str), -1)
+	if len(result) != 2 {
+		return time.Time{}, time.Time{}, fmt.Errorf("Invalid timewindow: %v", str)
+	}
+	timeFrom, _ := parseTime(string(result[0]))
+	timeTo, _ := parseTime(string(result[1]))
+	return timeFrom, timeTo, nil
+}
+
+func parseTime(str string) (result time.Time, err error) {
+	form := "3PM"
+	result, err = time.Parse(form, str)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func filter(recipes []Recipe, f func(Recipe) bool) []Recipe {
+	result := make([]Recipe, 0)
+	for _, recipe := range recipes {
+		if f(recipe) {
+			result = append(result, recipe)
+		}
+	}
+	return result
 }
 
 // statsCmd represents the stats command
