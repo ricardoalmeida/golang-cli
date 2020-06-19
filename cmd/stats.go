@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
@@ -47,6 +48,10 @@ to quickly create a Cobra application.`,
 		_, err = strconv.Atoi(cmd.Flag("postcode").Value.String())
 		if err != nil {
 			return fmt.Errorf("Invalid Postcode: %s", err)
+		}
+
+		if _, err := os.Stat(cmd.Flag("file").Value.String()); err != nil {
+			return fmt.Errorf("File does not exist")
 		}
 
 		return nil
