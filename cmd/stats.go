@@ -36,15 +36,28 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
+	Args: func(cmd *cobra.Command, args []string) error {
+		from := cmd.Flag("from").Value.String()
+		to := cmd.Flag("to").Value.String()
+
+		err := stat.ValidateTimeWindow(from, to)
+		if err != nil {
+			return fmt.Errorf("%s", err)
+		}
+		_, err = strconv.Atoi(cmd.Flag("postcode").Value.String())
+		if err != nil {
+			return fmt.Errorf("Invalid Postcode: %s", err)
+		}
+
+		return nil
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		from := cmd.Flag("from").Value.String()
 		to := cmd.Flag("to").Value.String()
 		filePath := cmd.Flag("file").Value.String()
 		words := strings.Split(cmd.Flag("word").Value.String(), ",")
 		postcode, err := strconv.Atoi(cmd.Flag("postcode").Value.String())
-		if err != nil {
-			panic(err)
-		}
+
 		data, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			panic(err)
@@ -57,6 +70,7 @@ to quickly create a Cobra application.`,
 		}
 
 		stat := stat.Stats(recipes, postcode, from, to, words)
+
 		b, err := json.Marshal(&stat)
 		if err != nil {
 			fmt.Printf("Error: %s", err)
