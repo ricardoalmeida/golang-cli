@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -35,22 +36,29 @@ type Stat struct {
 	CountPerRecipe          []RecipeCount         `json:"count_per_recipe"`
 	BusiestPostcode         PostcodeDeliveryCount `json:"busiest_postcode"`
 	CountPerPostcodeAndTime PostcodePerTime       `json:"count_per_postcode_and_time"`
+	MatchByName             []string              `json:"match_by_name"`
 }
 
-func Stats(recipes []Recipe, postcode string, from string, to string) Stat {
+func Stats(recipes []Recipe, postcode string, from string, to string, words []string) Stat {
 	count, _ := countPerPostcodeAndTime(recipes, PostcodePerTime{
 		Postcode: postcode,
 		From:     from,
 		To:       to,
 	}) // TODO error
 
-	postcodePerTime := PostcodePerTime{Postcode: postcode, From: from, To: to, DeliveryCount: count}
+	postcodePerTime := PostcodePerTime{
+		Postcode:      postcode,
+		From:          from,
+		To:            to,
+		DeliveryCount: count,
+	}
 
 	return Stat{
 		UniqueRecipeCount:       uniqueRecipeCount(recipes),
 		CountPerRecipe:          countPerRecipe(recipes),
 		BusiestPostcode:         busiestPostcode(recipes),
 		CountPerPostcodeAndTime: postcodePerTime,
+		MatchByName:             matchByName(recipes, words),
 	}
 }
 
@@ -143,4 +151,21 @@ func filter(recipes []Recipe, f func(Recipe) bool) []Recipe {
 		}
 	}
 	return result
+}
+
+func matchByName(recipes []Recipe, words []string) []string {
+	namesMap := map[string]bool{}
+	names := []string{}
+	for _, recipe := range recipes {
+		for _, w := range words {
+			if namesMap[recipe.Recipe] == false {
+				if strings.Contains(strings.ToLower(recipe.Recipe), strings.ToLower(w)) {
+					names = append(names, recipe.Recipe)
+					namesMap[recipe.Recipe] = true
+				}
+			}
+		}
+	}
+	sort.Strings(names)
+	return names
 }

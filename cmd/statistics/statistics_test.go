@@ -32,9 +32,10 @@ func TestStats(t *testing.T) {
 			To:            "3PM",
 			DeliveryCount: 1,
 		},
+		MatchByName: []string{"Meatloaf à La Mom", "Speedy Steak Fajitas"},
 	}
 
-	got := Stats(recipes, "10120", "11AM", "3PM")
+	got := Stats(recipes, "10120", "11AM", "3PM", []string{"Meatloaf", "Fajitas"})
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("stats() = %v; want %v", got, want)
 	}
@@ -129,5 +130,20 @@ func TestCountPerPostcodeAndTime_DeliveryFormatError(t *testing.T) {
 	}
 	if got != 1 {
 		t.Fatalf("countPerPostcodeAndTime() error = %v; want %v", got, want)
+	}
+}
+
+func TestMatchByName(t *testing.T) {
+	recipes := []Recipe{
+		{"10224", "Spinach Artichoke Pasta Bake", "Wednesday 11AM - 2PM"},
+		{"10224", "Creamy Dill Chicken", "Wednesday 10AM - 2PM"},
+		{"10224", "Creamy Dill Chicken", "Saturday 9AM - 2PM"},
+		{"10208", "Speedy Steak Fajitas", "Thursday 10AM - 1PM"},
+	}
+
+	want := []string{"Creamy Dill Chicken", "Spinach Artichoke Pasta Bake"}
+	got := matchByName(recipes, []string{"chicken", "pasta"})
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("matchByName() = %v; want %v", got, want)
 	}
 }
