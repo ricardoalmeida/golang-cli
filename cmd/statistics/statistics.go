@@ -5,11 +5,10 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 )
 
 type Recipe struct {
-	Postcode string `json:"postcode"`
+	Postcode int    `json:"postcode,string"`
 	Recipe   string `json:"recipe"`
 	Delivery string `json:"delivery"`
 }
@@ -39,15 +38,11 @@ type Stat struct {
 	MatchByName             []string              `json:"match_by_name"`
 }
 
-func Stats(recipes []Recipe, postcode string, from string, to string, words []string) Stat {
-	count, _ := countPerPostcodeAndTime(recipes, PostcodePerTime{
-		Postcode: postcode,
-		From:     from,
-		To:       to,
-	}) // TODO error
+func Stats(recipes []Recipe, postcode int, from string, to string, words []string) Stat {
+	count, _ := countPerPostcodeAndTime(recipes, postcode, from, to) // TODO error
 
 	postcodePerTime := PostcodePerTime{
-		Postcode:      postcode,
+		Postcode:      fmt.Sprintf("%05d", postcode),
 		From:          from,
 		To:            to,
 		DeliveryCount: count,
@@ -85,62 +80,42 @@ func countPerRecipe(recipes []Recipe) []RecipeCount {
 }
 
 func busiestPostcode(recipes []Recipe) PostcodeDeliveryCount {
-	res := PostcodeDeliveryCount{}
-	groupedByPostcode := map[string]int{}
+	var count int
+	var postcode int
+	groupedByPostcode := map[int]int{}
 	for _, recipe := range recipes {
 		groupedByPostcode[recipe.Postcode]++
-		if groupedByPostcode[recipe.Postcode] > res.DeliveryCount {
-			res.DeliveryCount = groupedByPostcode[recipe.Postcode]
-			res.Postcode = recipe.Postcode
+		if groupedByPostcode[recipe.Postcode] > count {
+			count = groupedByPostcode[recipe.Postcode]
+			postcode = recipe.Postcode
 		}
 	}
-	return res
+	return PostcodeDeliveryCount{DeliveryCount: count, Postcode: fmt.Sprintf("%05d", postcode)}
 }
 
-func countPerPostcodeAndTime(recipes []Recipe, postcodePerTime PostcodePerTime) (count int, err error) {
-	limitFrom, err := parseTime(postcodePerTime.From)
-	if err != nil {
-		return
-	}
-	limitTo, err := parseTime(postcodePerTime.To)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
+func countPerPostcodeAndTime(recipes []Recipe, postcode int, limitFrom string, limitTo string) (count int, err error) {
 	recipes = filter(recipes, func(recipe Recipe) bool {
-		timeFrom, timeTo, err := parseDelivery(recipe.Delivery)
+		from, to, err := parseDelivery(recipe.Delivery)
 		if err != nil {
 			fmt.Println(err)
 			return false
 		}
 
-		return recipe.Postcode == postcodePerTime.Postcode &&
-			(timeFrom.After(limitFrom) || timeFrom.Equal(limitFrom)) &&
-			(timeTo.Before(limitTo) || timeTo.Equal(limitTo))
+		return recipe.Postcode == postcode &&
+			fmt.Sprintf("%04s", limitFrom) <= fmt.Sprintf("%04s", from) &&
+			fmt.Sprintf("%04s", to) <= fmt.Sprintf("%04s", limitTo)
 	})
 
 	return len(recipes), nil
 }
 
-func parseDelivery(str string) (from time.Time, to time.Time, err error) {
+func parseDelivery(str string) (from string, to string, err error) {
 	re := regexp.MustCompile(`\d+(AM|PM)`)
 	result := re.FindAll([]byte(str), -1)
 	if len(result) != 2 {
-		return time.Time{}, time.Time{}, fmt.Errorf("Invalid timewindow: %v", str)
+		return "", "", fmt.Errorf("Invalid timewindow: %v", str)
 	}
-	timeFrom, _ := parseTime(string(result[0]))
-	timeTo, _ := parseTime(string(result[1]))
-	return timeFrom, timeTo, nil
-}
-
-func parseTime(str string) (result time.Time, err error) {
-	form := "3PM"
-	result, err = time.Parse(form, str)
-	if err != nil {
-		return
-	}
-	return
+	return string(result[0]), string(result[1]), nil
 }
 
 func filter(recipes []Recipe, f func(Recipe) bool) []Recipe {

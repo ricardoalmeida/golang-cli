@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 
 	stat "github.com/ricardoalmeida/golang-cli/cmd/statistics"
@@ -36,12 +37,14 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		postcode := cmd.Flag("postcode").Value.String()
 		from := cmd.Flag("from").Value.String()
 		to := cmd.Flag("to").Value.String()
 		filePath := cmd.Flag("file").Value.String()
 		words := strings.Split(cmd.Flag("word").Value.String(), ",")
-
+		postcode, err := strconv.Atoi(cmd.Flag("postcode").Value.String())
+		if err != nil {
+			panic(err)
+		}
 		data, err := ioutil.ReadFile(filePath)
 		if err != nil {
 			panic(err)
