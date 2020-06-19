@@ -42,7 +42,7 @@ func Stats(recipes []Recipe, postcode int, from string, to string, words []strin
 	count, _ := countPerPostcodeAndTime(recipes, postcode, from, to) // TODO error
 
 	postcodePerTime := PostcodePerTime{
-		Postcode:      fmt.Sprintf("%05d", postcode),
+		Postcode:      formatPostcode(postcode),
 		From:          from,
 		To:            to,
 		DeliveryCount: count,
@@ -90,7 +90,7 @@ func busiestPostcode(recipes []Recipe) PostcodeDeliveryCount {
 			postcode = recipe.Postcode
 		}
 	}
-	return PostcodeDeliveryCount{DeliveryCount: count, Postcode: fmt.Sprintf("%05d", postcode)}
+	return PostcodeDeliveryCount{DeliveryCount: count, Postcode: formatPostcode(postcode)}
 }
 
 func countPerPostcodeAndTime(recipes []Recipe, postcode int, limitFrom string, limitTo string) (count int, err error) {
@@ -102,8 +102,8 @@ func countPerPostcodeAndTime(recipes []Recipe, postcode int, limitFrom string, l
 		}
 
 		return recipe.Postcode == postcode &&
-			fmt.Sprintf("%04s", limitFrom) <= fmt.Sprintf("%04s", from) &&
-			fmt.Sprintf("%04s", to) <= fmt.Sprintf("%04s", limitTo)
+			formatHour(limitFrom) <= formatHour(from) &&
+			formatHour(to) <= formatHour(limitTo)
 	})
 
 	return len(recipes), nil
@@ -143,4 +143,12 @@ func matchByName(recipes []Recipe, words []string) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+func formatPostcode(postcode int) string {
+	return fmt.Sprintf("%05d", postcode)
+}
+
+func formatHour(hour string) string {
+	return fmt.Sprintf("%04s", hour)
 }
