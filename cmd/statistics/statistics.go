@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+var hours = [...]string{
+	"12AM", "1AM", "2AM", "3AM", "4AM", "5AM", "6AM", "7AM", "8AM", "9AM", "10AM", "11AM",
+	"12PM", "1PM", "2PM", "3PM", "4PM", "5PM", "6PM", "7PM", "8PM", "9PM", "10PM", "11PM",
+}
+
 type Recipe struct {
 	Postcode int    `json:"postcode,string"`
 	Recipe   string `json:"recipe"`
@@ -101,19 +106,21 @@ func countPerPostcodeAndTime(recipes []Recipe, postcode int, limitFrom string, l
 			return false
 		}
 
-		return recipe.Postcode == postcode &&
-			formatHour(limitFrom) <= formatHour(from) &&
-			formatHour(to) <= formatHour(limitTo)
+		i, _ := indexHour(limitFrom)
+		j, _ := indexHour(from)
+		k, _ := indexHour(to)
+		l, _ := indexHour(limitTo)
+
+		return recipe.Postcode == postcode && i <= j && k <= l
 	})
 
 	return len(recipes), nil
 }
 
 func parseDelivery(str string) (from string, to string, err error) {
-	re := regexp.MustCompile(`\d+(AM|PM)`)
-	result := re.FindAll([]byte(str), -1)
+	result := matchHoursInDelivery(str)
 	if len(result) != 2 {
-		return "", "", fmt.Errorf("Invalid timewindow: %v", str)
+		return "", "", fmt.Errorf("Error getting time window from delivery: %v", str)
 	}
 	return string(result[0]), string(result[1]), nil
 }
@@ -149,6 +156,31 @@ func formatPostcode(postcode int) string {
 	return fmt.Sprintf("%05d", postcode)
 }
 
-func formatHour(hour string) string {
-	return fmt.Sprintf("%04s", hour)
+func indexHour(hour string) (int, error) {
+	for i, s := range hours {
+		if s == hour {
+			return i, nil
+		}
+	}
+	return 0, fmt.Errorf("Invalid hour value: %v", hour)
+}
+
+func matchHoursInDelivery(hour string) [][]byte {
+	re := regexp.MustCompile(`\d+(AM|PM)`)
+	return re.FindAll([]byte(hour), -1)
+}
+
+func ValidateTimeWindow(from string, to string) (err error) {
+	var i int
+	var j int
+	if i, err = indexHour(from); err != nil {
+		return fmt.Errorf("Invalid 'from' value: %v", from)
+	}
+	if j, err = indexHour(to); err != nil {
+		return fmt.Errorf("Invalid 'to' value: %v", to)
+	}
+	if i >= j {
+		return fmt.Errorf("Invalid time window: 'from' %v 'to' %v. A 'from' should be before 'to'", from, to)
+	}
+	return nil
 }
