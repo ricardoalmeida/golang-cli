@@ -18,7 +18,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -63,18 +62,9 @@ to quickly create a Cobra application.`,
 		words := strings.Split(cmd.Flag("word").Value.String(), ",")
 		postcode, err := strconv.Atoi(cmd.Flag("postcode").Value.String())
 
-		data, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			panic(err)
-		}
-
-		recipes := []stat.Recipe{}
-		err = json.Unmarshal(data, &recipes)
-		if err != nil {
-			panic(err)
-		}
-
-		stat := stat.Stats(recipes, postcode, from, to, words)
+		input, _ := os.Open(filePath)
+		dec := json.NewDecoder(input)
+		stat := stat.Stats(dec, postcode, from, to, words)
 
 		b, err := json.Marshal(&stat)
 		if err != nil {

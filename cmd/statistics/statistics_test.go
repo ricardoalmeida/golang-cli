@@ -1,18 +1,26 @@
 package statistics
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
+	"os"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestStats(t *testing.T) {
-	recipes := []Recipe{
-		{10208, "Speedy Steak Fajitas", "Thursday 7AM - 5PM"},
-		{10208, "Speedy Steak Fajitas", "Thursday 7AM - 5PM"},
-		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-		{10220, "Spinach Artichoke Pasta Bake", "Monday 5AM - 4PM"},
-		{10120, "Meatloaf à La Mom", "Saturday 11AM - 3PM"},
-	}
+	const jsonStream = `
+	[
+		{"postcode": "10208", "recipe": "Speedy Steak Fajitas", "delivery": "Thursday 7AM - 5PM"},
+		{"postcode": "10208", "recipe": "Speedy Steak Fajitas", "delivery": "Thursday 7AM - 5PM"},
+		{"postcode": "10224", "recipe": "Creamy Dill Chicken", "delivery": "Wednesday 1AM - 7PM"},
+		{"postcode": "10220", "recipe": "Spinach Artichoke Pasta Bake", "delivery": "Monday 5AM - 4PM"},
+		{"postcode": "10120", "recipe": "Meatloaf à La Mom", "delivery": "Saturday 11AM - 3PM"}
+	]
+`
+	dec := json.NewDecoder(strings.NewReader(jsonStream))
 
 	want := Stat{
 		UniqueRecipeCount: 4,
@@ -35,22 +43,74 @@ func TestStats(t *testing.T) {
 		MatchByName: []string{"Meatloaf à La Mom", "Speedy Steak Fajitas"},
 	}
 
-	got := Stats(recipes, 10120, "11AM", "3PM", []string{"Meatloaf", "Fajitas"})
+	got := Stats(dec, 10120, "11AM", "3PM", []string{"Meatloaf", "Fajitas"})
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("stats() = %v; want %v", got, want)
 	}
 }
 
+func TestStats_DeliveryHasFormatError(t *testing.T) {
+	const jsonStream = `
+	[
+		{"postcode": "10208", "recipe": "Speedy Steak Fajitas", "delivery": "Thursday 7 AM - 5PM"},
+		{"postcode": "10208", "recipe": "Speedy Steak Fajitas", "delivery": "Thursday 7AM - 5PM"}
+	]
+`
+	dec := json.NewDecoder(strings.NewReader(jsonStream))
+
+	testStdout, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe() err = %v; want %v", err, nil)
+	}
+	osStdout := os.Stdout // keep backup of the real stdout
+	os.Stdout = writer
+	defer func() {
+		// Undo what we changed when this test is done.
+		os.Stdout = osStdout
+	}()
+
+	want := Stat{
+		UniqueRecipeCount: 1,
+		CountPerRecipe: []RecipeCount{
+			{Recipe: "Speedy Steak Fajitas", Count: 1},
+		},
+		BusiestPostcode: PostcodeDeliveryCount{
+			Postcode:      "10208",
+			DeliveryCount: 1,
+		},
+		CountPerPostcodeAndTime: PostcodePerTime{
+			Postcode:      "10120",
+			From:          "11AM",
+			To:            "3PM",
+			DeliveryCount: 0,
+		},
+		MatchByName: []string{"Speedy Steak Fajitas"},
+	}
+
+	got := Stats(dec, 10120, "11AM", "3PM", []string{"Meatloaf", "Fajitas"})
+	writer.Close()
+
+	var buf bytes.Buffer
+	io.Copy(&buf, testStdout)
+	errorMessage := buf.String()
+	if errorMessage != "Error getting time window from delivery: Thursday 7 AM - 5PM\n" {
+		t.Fatalf("stats() invalid hour (7 AM) has unexpected space and should be ignored")
+	}
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("stats() = %v; want %v", got, want)
+	}
+
+}
+
 func TestCountPerRecipe(t *testing.T) {
-	got := countPerRecipe([]Recipe{
-		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-		{10208, "Speedy Steak Fajitas", "Thursday 7AM - 5PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-		{10220, "Spinach Artichoke Pasta Bake", "Monday 5AM - 4PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-	})
+	input := map[string]int{
+		"Meatloaf à La Mom":            3,
+		"Speedy Steak Fajitas":         1,
+		"Creamy Dill Chicken":          2,
+		"Spinach Artichoke Pasta Bake": 1,
+	}
+	got := countPerRecipe(input)
 
 	want := []RecipeCount{
 		{Recipe: "Creamy Dill Chicken", Count: 2},
@@ -60,67 +120,5 @@ func TestCountPerRecipe(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("countPerRecipe() = %v; want %v", got, want)
-	}
-}
-
-func TestBusiestPostcode(t *testing.T) {
-	got := busiestPostcode([]Recipe{
-		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-		{10208, "Speedy Steak Fajitas", "Thursday 7AM - 5PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-		{10220, "Spinach Artichoke Pasta Bake", "Monday 5AM - 4PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-	})
-
-	want := PostcodeDeliveryCount{Postcode: "10161", DeliveryCount: 3}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("busiestPostcode() = %v; want %v", got, want)
-	}
-}
-
-func TestCountPerPostcodeAndTime(t *testing.T) {
-	recipes := []Recipe{
-		{10224, "Creamy Dill Chicken", "Wednesday 10AM - 2PM"},
-		{10224, "Creamy Dill Chicken", "Saturday 9AM - 2PM"},
-		{10224, "Spinach Artichoke Pasta Bake", "Wednesday 11AM - 2PM"},
-		{10208, "Speedy Steak Fajitas", "Thursday 10AM - 1PM"},
-	}
-	got, _ := countPerPostcodeAndTime(recipes, 10224, "10AM", "3PM")
-
-	if got != 2 {
-		t.Fatalf("countPerPostcodeAndTime() = %v; want %v", got, 2)
-	}
-}
-
-func TestCountPerPostcodeAndTime_DeliveryFormatError(t *testing.T) {
-	recipes := []Recipe{
-		{10224, "Creamy Dill Chicken", "Wednesday 10 AM - 2PM"},
-		{10224, "Creamy Dill Chicken", "Wednesday 10AM - 2PM"},
-	}
-
-	want := "Invalid timewindow: Wednesday 10 AM - 2PM"
-	got, err := countPerPostcodeAndTime(recipes, 10224, "10AM", "3PM")
-	if err != nil {
-		t.Fatalf("countPerPostcodeAndTime() err %v; want nil", err)
-	}
-	if got != 1 {
-		t.Fatalf("countPerPostcodeAndTime() error = %v; want %v", got, want)
-	}
-}
-
-func TestMatchByName(t *testing.T) {
-	recipes := []Recipe{
-		{10224, "Spinach Artichoke Pasta Bake", "Wednesday 11AM - 2PM"},
-		{10224, "Creamy Dill Chicken", "Wednesday 10AM - 2PM"},
-		{10224, "Creamy Dill Chicken", "Saturday 9AM - 2PM"},
-		{10208, "Speedy Steak Fajitas", "Thursday 10AM - 1PM"},
-	}
-
-	want := []string{"Creamy Dill Chicken", "Spinach Artichoke Pasta Bake"}
-	got := matchByName(recipes, []string{"chicken", "pasta"})
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("matchByName() = %v; want %v", got, want)
 	}
 }
