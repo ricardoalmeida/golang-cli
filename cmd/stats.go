@@ -26,16 +26,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// statsCmd represents the stats command
 var statsCmd = &cobra.Command{
 	Use:   "stats",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "Process input (json file) and returns Recipe Stats json (stdout)",
+	Long: `Process input (json file) and returns Recipe Stats json (stdout).
+If no flags are provides we are assuming the defaults described in the test requirement.`,
 	Args: func(cmd *cobra.Command, args []string) error {
 		from := cmd.Flag("from").Value.String()
 		to := cmd.Flag("to").Value.String()
@@ -78,17 +73,9 @@ to quickly create a Cobra application.`,
 func init() {
 	rootCmd.AddCommand(statsCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	statsCmd.PersistentFlags().String("postcode", "10120", "A help for postcode")
-	statsCmd.PersistentFlags().String("from", "10AM", "A help for from")
-	statsCmd.PersistentFlags().String("to", "3PM", "A help for to")
-	statsCmd.PersistentFlags().StringP("file", "f", "./test_calculation_small.json", "A help for to")
-	statsCmd.PersistentFlags().StringP("word", "w", "Potato, Veggie, Mushroom", "A help for word")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// statsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	statsCmd.PersistentFlags().String("postcode", "10120", "Postcode number used for counting per postcode and time")
+	statsCmd.PersistentFlags().String("from", "10AM", "Format {h}AM or {h}PM used for counting per postcode and time")
+	statsCmd.PersistentFlags().String("to", "3PM", "Format {h}AM or {h}PM used for counting per postcode and time")
+	statsCmd.PersistentFlags().StringP("file", "f", "./hf_test_calculation_fixtures.json", "Default file for processing")
+	statsCmd.PersistentFlags().StringP("word", "w", "Potato, Veggie, Mushroom", "List of words to match recipe names (alphabetically ordered)")
 }

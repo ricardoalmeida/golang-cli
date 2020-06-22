@@ -13,22 +13,26 @@ var hours = [...]string{
 	"12PM", "1PM", "2PM", "3PM", "4PM", "5PM", "6PM", "7PM", "8PM", "9PM", "10PM", "11PM",
 }
 
+// Recipe is the representer of json data input
 type Recipe struct {
 	Postcode int    `json:"postcode,string"`
 	Recipe   string `json:"recipe"`
 	Delivery string `json:"delivery"`
 }
 
+// RecipeCount is part of Stat representer
 type RecipeCount struct {
 	Recipe string `json:"recipe"`
 	Count  int    `json:"count"`
 }
 
+// PostcodeDeliveryCount is part of Stat representer
 type PostcodeDeliveryCount struct {
 	Postcode      string `json:"postcode"`
 	DeliveryCount int    `json:"delivery_count"`
 }
 
+// PostcodePerTime is part of Stat representer
 type PostcodePerTime struct {
 	Postcode      string `json:"postcode"`
 	From          string `json:"from"`
@@ -36,6 +40,7 @@ type PostcodePerTime struct {
 	DeliveryCount int    `json:"delivery_count"`
 }
 
+// Stat is the final json representer structure
 type Stat struct {
 	UniqueRecipeCount       int                   `json:"unique_recipe_count"`
 	CountPerRecipe          []RecipeCount         `json:"count_per_recipe"`
@@ -44,6 +49,9 @@ type Stat struct {
 	MatchByName             []string              `json:"match_by_name"`
 }
 
+// Stats is called by Cobra RUN, given user's flags.
+// It streams data from json file and calculates the final representer (Stat)
+// rendered to `stdout`
 func Stats(dec *json.Decoder, postcode int, limitFrom string, limitTo string, words []string) Stat {
 	countPerPostcodeAndTime := 0
 
@@ -170,6 +178,10 @@ func matchHoursInDelivery(hour string) [][]byte {
 	return re.FindAll([]byte(hour), -1)
 }
 
+// ValidateTimeWindow validates user's input regarding time window
+// Ex: {h}AM - {h}PM
+//     {h} AM - {h}PM  (error: unexpected space)
+//     9AM - 8AM       (error: window start bigger than window end)
 func ValidateTimeWindow(from string, to string) (err error) {
 	var i int
 	var j int
