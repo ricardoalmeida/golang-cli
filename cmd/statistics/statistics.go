@@ -53,17 +53,15 @@ func Stats(recipes []Recipe, postcode int, from string, to string, words []strin
 		DeliveryCount: count,
 	}
 
+	countPerRecipe := countPerRecipe(recipes)
+
 	return Stat{
-		UniqueRecipeCount:       uniqueRecipeCount(recipes),
-		CountPerRecipe:          countPerRecipe(recipes),
+		UniqueRecipeCount:       len(countPerRecipe),
+		CountPerRecipe:          countPerRecipe,
 		BusiestPostcode:         busiestPostcode(recipes),
 		CountPerPostcodeAndTime: postcodePerTime,
 		MatchByName:             matchByName(recipes, words),
 	}
-}
-
-func uniqueRecipeCount(recipes []Recipe) int {
-	return len(countPerRecipe(recipes))
 }
 
 func countPerRecipe(recipes []Recipe) []RecipeCount {

@@ -41,21 +41,6 @@ func TestStats(t *testing.T) {
 	}
 }
 
-func TestUniqueRecipeCount(t *testing.T) {
-	got := uniqueRecipeCount([]Recipe{
-		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-		{10208, "Speedy Steak Fajitas", "Thursday 7AM - 5PM"},
-		{10220, "Spinach Artichoke Pasta Bake", "Monday 5AM - 4PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
-		{10161, "Meatloaf à La Mom", "Saturday 10AM - 6PM"},
-	})
-
-	if got != 4 {
-		t.Fatalf("uniqueRecipeCount() = %v; want %v", got, 4)
-	}
-}
-
 func TestCountPerRecipe(t *testing.T) {
 	got := countPerRecipe([]Recipe{
 		{10224, "Creamy Dill Chicken", "Wednesday 1AM - 7PM"},
