@@ -152,16 +152,6 @@ func parseDelivery(str string) (from string, to string, err error) {
 	return string(result[0]), string(result[1]), nil
 }
 
-func filter(recipes []Recipe, f func(Recipe) bool) []Recipe {
-	result := make([]Recipe, 0)
-	for _, recipe := range recipes {
-		if f(recipe) {
-			result = append(result, recipe)
-		}
-	}
-	return result
-}
-
 func formatPostcode(postcode int) string {
 	return fmt.Sprintf("%05d", postcode)
 }
