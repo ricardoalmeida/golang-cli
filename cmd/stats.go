@@ -76,6 +76,6 @@ func init() {
 	statsCmd.PersistentFlags().String("postcode", "10120", "Postcode number used for counting per postcode and time")
 	statsCmd.PersistentFlags().String("from", "10AM", "Format {h}AM or {h}PM used for counting per postcode and time")
 	statsCmd.PersistentFlags().String("to", "3PM", "Format {h}AM or {h}PM used for counting per postcode and time")
-	statsCmd.PersistentFlags().StringP("file", "f", "./hf_test_calculation_fixtures.json", "Default file for processing")
+	statsCmd.PersistentFlags().StringP("file", "f", "./test_calculation_small.json", "Default file for processing")
 	statsCmd.PersistentFlags().StringP("word", "w", "Potato, Veggie, Mushroom", "List of words to match recipe names (alphabetically ordered)")
 }

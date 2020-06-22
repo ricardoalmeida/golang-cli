@@ -1,0 +1,22 @@
+[
+    {
+        "postcode": "10224",
+        "recipe": "Creamy Dill Chicken",
+        "delivery": "Wednesday 1AM - 7PM"
+    },
+    {
+        "postcode": "10208",
+        "recipe": "Speedy Steak Fajitas",
+        "delivery": "Thursday 7AM - 5PM"
+    },
+    {
+        "postcode": "10220",
+        "recipe": "Spinach Artichoke Pasta Bake",
+        "delivery": "Monday 5AM - 4PM"
+    },
+    {
+        "postcode": "10161",
+        "recipe": "Meatloaf à La Mom",
+        "delivery": "Saturday 10AM - 6PM"
+    }
+]
